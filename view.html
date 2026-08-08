@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16181A">
+<title>Data — dotheymove</title>
+<style>
+:root{
+  --asphalt:#16181A; --asphalt-2:#1F2327; --asphalt-3:#282D31;
+  --concrete:#E8E5DE; --muted:#8E959B; --paint:#F2C230;
+  --red:#E2453C; --green:#2FBF71; --line:rgba(232,229,222,.13);
+  --font-ui:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-num:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--asphalt);color:var(--concrete);font-family:var(--font-ui);
+  -webkit-font-smoothing:antialiased;padding-bottom:48px}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+.topbar{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px calc(12px + env(safe-area-inset-top));border-bottom:2px solid var(--paint);
+  max-width:720px;margin:0 auto}
+.brand{font-family:var(--font-num);font-size:13px;letter-spacing:.22em;text-transform:uppercase;font-weight:700}
+.brand b{color:var(--paint)}
+.navlink{font-family:var(--font-num);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.navlink:hover,.navlink:focus-visible{color:var(--concrete);border-color:var(--paint)}
+.eyebrow{font-family:var(--font-num);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+
+/* headline answer */
+.headline{padding:30px 0 6px;border-bottom:1px solid var(--line)}
+.big{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:clamp(56px,17vw,84px);
+  line-height:.9;font-weight:600;letter-spacing:-.035em;margin:10px 0 8px}
+.big small{font-size:.32em;color:var(--muted);letter-spacing:.02em}
+.sub{font-size:15px;color:var(--muted);line-height:1.5;margin:0 0 22px;max-width:44ch}
+.sub b{color:var(--concrete);font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:22px 0}
+.card{background:var(--asphalt-2);border:1px solid var(--line);border-radius:16px;padding:14px}
+.card .v{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:27px;margin:8px 0 2px;letter-spacing:-.02em}
+.card .v.g{color:var(--green)} .card .v.y{color:var(--paint)}
+.card .k{font-family:var(--font-num);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+.section{margin:30px 0 0;border-top:1px solid var(--line);padding-top:18px}
+.section h2{margin:0 0 14px;font-family:var(--font-num);font-size:11px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--muted);font-weight:400}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+select,button.act{appearance:none;background:var(--asphalt-2);color:var(--concrete);border:1px solid var(--line);
+  border-radius:12px;padding:11px 13px;font-size:14px;font-family:var(--font-ui);cursor:pointer}
+select{padding-right:32px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 17px) 50%,calc(100% - 12px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+button.act:active{background:var(--asphalt-3)}
+select:focus-visible,button:focus-visible{outline:2px solid var(--paint);outline-offset:2px}
+
+/* bars */
+.bar{margin-bottom:13px}
+.bar-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;gap:10px}
+.bar-name{font-size:14px}
+.bar-val{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:13px;color:var(--paint)}
+.bar-n{font-family:var(--font-num);font-size:10px;color:var(--muted);letter-spacing:.1em}
+.track{height:10px;background:var(--asphalt-2);border-radius:6px;overflow:hidden}
+.fill{height:100%;background:var(--paint);border-radius:6px;transition:width .5s cubic-bezier(.2,.7,.3,1)}
+.fill.thin{background:repeating-linear-gradient(90deg,var(--paint) 0 6px,rgba(242,194,48,.35) 6px 12px)}
+
+/* table */
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+th{font-family:var(--font-num);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  font-weight:400;text-align:left;padding:11px 12px;background:var(--asphalt-2);position:sticky;top:0}
+td{padding:11px 12px;border-top:1px solid var(--line)}
+td.num{font-family:var(--font-num);font-variant-numeric:tabular-nums;text-align:right}
+td.yes{color:var(--green)} td.no{color:var(--muted)}
+
+.msg{padding:34px 4px;color:var(--muted);font-family:var(--font-num);font-size:13px;line-height:1.8;letter-spacing:.03em}
+.msg b{color:var(--paint);font-weight:400}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">do<b>they</b>move</div>
+  <a class="navlink" href="/">← Record</a>
+</header>
+
+<main class="wrap" id="app">
+  <div class="msg" id="loading">Loading trials from the sheet…</div>
+</main>
+
+<script>
+/* Must match index.html and Code.gs */
+const CONFIG = {
+  ENDPOINT: "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE",
+  KEY: "change-me-please"
+};
+
+const GROUPS = {
+  age_range:"Age range", gender:"Gender", make:"Make", size_class:"Size class",
+  color:"Color", trial_type:"Trial type"
+};
+let rows = [], groupBy = "trial_type", metric = "rate";
+
+const el = (h) => { const d = document.createElement("div"); d.innerHTML = h; return d.firstElementChild; };
+const num = (v) => { const n = Number(v); return Number.isFinite(n) && v !== "" && v !== null ? n : null; };
+const median = (a) => { if (!a.length) return null; const s=[...a].sort((x,y)=>x-y), m=s.length>>1;
+  return s.length % 2 ? s[m] : (s[m-1]+s[m])/2; };
+const pct = (x) => Math.round(x*100) + "%";
+const secs = (ms) => ms === null ? "—" : (ms/1000).toFixed(2) + "s";
+
+async function load(){
+  if (!CONFIG.ENDPOINT || CONFIG.ENDPOINT.startsWith("PASTE")){
+    document.getElementById("app").innerHTML =
+      '<div class="msg">No sheet connected yet.<br>Paste your Apps Script Web App URL into <b>view.html</b> and <b>index.html</b>.</div>';
+    return;
+  }
+  try{
+    const url = CONFIG.ENDPOINT + "?action=list&limit=2000&key=" + encodeURIComponent(CONFIG.KEY);
+    const res = await fetch(url, { redirect:"follow" });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Sheet refused the request");
+    rows = data.rows || [];
+    render();
+  }catch(e){
+    document.getElementById("app").innerHTML =
+      '<div class="msg">Couldn\'t reach the sheet.<br>Check that the Apps Script is deployed with access set to <b>Anyone</b>, and that the key matches.<br><br>' +
+      String(e.message || e) + '</div>';
+  }
+}
+
+function render(){
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+
+  if (!rows.length){
+    app.appendChild(el('<div class="msg">No trials yet.<br>Record your first one at the next red light.</div>'));
+    return;
+  }
+
+  const moved = rows.filter(r => String(r.they_moved).toLowerCase() === "yes");
+  const lats  = rows.map(r => num(r.latency_ms)).filter(x => x !== null);
+  const real  = rows.filter(r => String(r.trial_type).indexOf("Real") === 0);
+  const ctrl  = rows.filter(r => String(r.trial_type).indexOf("Real") !== 0);
+  const rate  = (set) => set.length ? set.filter(r => String(r.they_moved).toLowerCase()==="yes").length / set.length : null;
+
+  /* headline */
+  const h = el('<section class="headline"></section>');
+  h.appendChild(el('<div class="eyebrow">Across ' + rows.length + ' recorded trials</div>'));
+  h.appendChild(el('<div class="big">' + pct(moved.length / rows.length) + '<small> moved</small></div>'));
+  const gap = (rate(real) !== null && rate(ctrl) !== null)
+    ? "Drivers followed on <b>" + pct(rate(real)) + "</b> of real moves and <b>" + pct(rate(ctrl)) +
+      "</b> of controls, a gap of <b>" + Math.round(Math.abs(rate(real)-rate(ctrl))*100) + " points</b>."
+    : "Record some control trials to see whether they follow the car or the light.";
+  h.appendChild(el('<p class="sub">' + gap + '</p>'));
+  app.appendChild(h);
+
+  /* cards */
+  const cards = el('<div class="cards"></div>');
+  const card = (k,v,cls) => cards.appendChild(el('<div class="card"><div class="k">'+k+'</div><div class="v '+(cls||'')+'">'+v+'</div></div>'));
+  card("Trials", rows.length);
+  card("They moved", moved.length, "g");
+  card("Median response", secs(median(lats)), "y");
+  card("Fastest response", secs(lats.length ? Math.min(...lats) : null));
+  app.appendChild(cards);
+
+  /* breakdown */
+  const sec = el('<section class="section"><h2>Breakdown</h2></section>');
+  const ctr = el('<div class="controls"></div>');
+  const gsel = el('<select aria-label="Group by"></select>');
+  for (const [k,v] of Object.entries(GROUPS)){
+    const o = document.createElement("option"); o.value = k; o.textContent = "By " + v.toLowerCase();
+    if (k === groupBy) o.selected = true; gsel.appendChild(o);
+  }
+  gsel.onchange = (e) => { groupBy = e.target.value; render(); };
+  const msel = el('<select aria-label="Metric"><option value="rate">Share who moved</option><option value="latency">Median response time</option></select>');
+  msel.value = metric;
+  msel.onchange = (e) => { metric = e.target.value; render(); };
+  const dl = el('<button class="act">Download CSV</button>'); dl.onclick = downloadCsv;
+  const rf = el('<button class="act">Refresh</button>'); rf.onclick = load;
+  ctr.append(gsel, msel, dl, rf); sec.appendChild(ctr);
+
+  const buckets = {};
+  for (const r of rows){
+    const k = r[groupBy] || "Unrecorded";
+    (buckets[k] = buckets[k] || []).push(r);
+  }
+  const entries = Object.entries(buckets).map(([k, set]) => {
+    const ls = set.map(r => num(r.latency_ms)).filter(x => x !== null);
+    return { k, n:set.length, rate:rate(set), lat:median(ls) };
+  }).filter(e => metric === "rate" || e.lat !== null);
+
+  entries.sort((a,b) => metric === "rate" ? (b.rate - a.rate) : (a.lat - b.lat));
+  const max = metric === "rate" ? 1 : Math.max(...entries.map(e => e.lat), 1);
+
+  if (!entries.length) sec.appendChild(el('<div class="msg">Nothing to plot for this combination yet.</div>'));
+  for (const e of entries){
+    const val = metric === "rate" ? pct(e.rate) : secs(e.lat);
+    const w = metric === "rate" ? e.rate*100 : (e.lat/max)*100;
+    sec.appendChild(el(
+      '<div class="bar"><div class="bar-top"><span class="bar-name">' + esc(e.k) +
+      '</span><span><span class="bar-val">' + val + '</span> <span class="bar-n">n=' + e.n + '</span></span></div>' +
+      '<div class="track"><div class="fill' + (e.n < 5 ? " thin" : "") + '" style="width:' + w.toFixed(1) + '%"></div></div></div>'
+    ));
+  }
+  if (entries.some(e => e.n < 5))
+    sec.appendChild(el('<div class="bar-n" style="margin-top:12px">Striped bars have fewer than 5 trials — treat them as a hint, not a finding.</div>'));
+  app.appendChild(sec);
+
+  /* table */
+  const tsec = el('<section class="section"><h2>Latest trials</h2></section>');
+  const cols = [["started_at","When"],["trial_type","Type"],["age_range","Age"],["gender","Gender"],
+                ["make","Make"],["size_class","Size"],["color","Color"],["i_moved","I moved"],
+                ["they_moved","They moved"],["latency_ms","Response"],["notes","Notes"]];
+  let html = '<div class="scroll"><table><thead><tr>' +
+    cols.map(c => "<th>" + c[1] + "</th>").join("") + "</tr></thead><tbody>";
+  for (const r of rows.slice(-60).reverse()){
+    html += "<tr>" + cols.map(([k]) => {
+      if (k === "latency_ms"){ const v = num(r[k]); return '<td class="num">' + (v===null ? "—" : (v/1000).toFixed(2)+"s") + "</td>"; }
+      if (k === "started_at"){ const d = new Date(r[k]); return "<td>" + (isNaN(d) ? esc(r[k]||"") : d.toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})) + "</td>"; }
+      if (k === "i_moved" || k === "they_moved"){ const y = String(r[k]).toLowerCase()==="yes"; return '<td class="'+(y?"yes":"no")+'">' + (y?"Yes":"No") + "</td>"; }
+      return "<td>" + esc(r[k] ?? "") + "</td>";
+    }).join("") + "</tr>";
+  }
+  tsec.appendChild(el(html + "</tbody></table></div>"));
+  app.appendChild(tsec);
+}
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+function downloadCsv(){
+  if (!rows.length) return;
+  const keys = Object.keys(rows[0]);
+  const line = (a) => a.map(v => '"' + String(v ?? "").replace(/"/g,'""') + '"').join(",");
+  const csv = [line(keys), ...rows.map(r => line(keys.map(k => r[k])))].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
+  a.download = "dotheymove-" + new Date().toISOString().slice(0,10) + ".csv";
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+load();
+</script>
+</body>
+</html>
