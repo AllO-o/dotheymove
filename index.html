@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16181A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Record — dotheymove</title>
+<style>
+/* ---------------------------------------------------------------
+   dotheymove.com — recording instrument
+   Palette borrowed from the road itself: asphalt, lane paint,
+   and the three lenses of a signal head.
+   --------------------------------------------------------------- */
+:root{
+  --asphalt:#16181A;
+  --asphalt-2:#1F2327;
+  --asphalt-3:#282D31;
+  --concrete:#E8E5DE;
+  --muted:#8E959B;
+  --paint:#F2C230;        /* lane-marking yellow  */
+  --red:#E2453C;          /* stop lens            */
+  --green:#2FBF71;        /* go lens              */
+  --line:rgba(232,229,222,.13);
+  --font-ui:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-num:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--asphalt);color:var(--concrete);font-family:var(--font-ui);
+  overscroll-behavior-y:contain;touch-action:manipulation;
+  padding-bottom:calc(96px + env(safe-area-inset-bottom));
+  -webkit-font-smoothing:antialiased;
+}
+/* ambient state wash — tells you where you are in peripheral vision */
+#wash{position:fixed;inset:0;pointer-events:none;z-index:0;transition:background .45s ease}
+.wrap{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:0 16px}
+
+/* ---- top bar ---- */
+.topbar{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px calc(12px + env(safe-area-inset-top));border-bottom:2px solid var(--paint);
+  position:relative;z-index:1;max-width:560px;margin:0 auto}
+.brand{font-family:var(--font-num);font-size:13px;letter-spacing:.22em;text-transform:uppercase;font-weight:700}
+.brand b{color:var(--paint);font-weight:700}
+.navlink{font-family:var(--font-num);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.navlink:hover,.navlink:focus-visible{color:var(--concrete);border-color:var(--paint)}
+
+/* ---- shared micro-label voice ---- */
+.eyebrow{font-family:var(--font-num);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+
+/* ---- clock ---- */
+.clock{padding:22px 0 10px;text-align:center}
+.clock-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.time{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:clamp(58px,19vw,86px);
+  line-height:.92;font-weight:600;letter-spacing:-.03em}
+.time.idle{color:var(--asphalt-3)}
+.time small{font-size:.34em;letter-spacing:.02em;color:var(--muted);margin-left:.12em}
+.latency{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:7px 14px;border-radius:999px;
+  background:rgba(242,194,48,.12);border:1px solid rgba(242,194,48,.5);
+  font-family:var(--font-num);font-size:14px;letter-spacing:.04em;color:var(--paint)}
+.latency.hide{display:none}
+
+/* ---- the lens buttons ---- */
+.pad{display:grid;gap:10px;margin:6px 0 4px}
+.pad.two{grid-template-columns:1fr 1fr}
+.lens{
+  appearance:none;border:1px solid var(--line);border-radius:26px;background:var(--asphalt-2);
+  color:var(--concrete);font-family:var(--font-ui);font-weight:700;font-size:19px;letter-spacing:-.01em;
+  min-height:104px;padding:16px 14px;cursor:pointer;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  transition:transform .07s ease, filter .15s ease;
+}
+.lens.big{min-height:min(30vh,220px);font-size:24px}
+.lens:active{transform:scale(.975);filter:brightness(1.15)}
+.lens::before{content:"";position:absolute;inset:0;opacity:.9;
+  background:radial-gradient(120% 90% at 50% 0%,var(--lens,transparent) 0%,transparent 72%)}
+.lens span{position:relative}
+.lens.red{--lens:rgba(226,69,60,.42);border-color:rgba(226,69,60,.55);box-shadow:0 0 40px -14px var(--red)}
+.lens.green{--lens:rgba(47,191,113,.38);border-color:rgba(47,191,113,.55);box-shadow:0 0 40px -14px var(--green)}
+.lens.big::after{content:"";position:absolute;left:50%;top:22px;width:12px;height:12px;margin-left:-6px;
+  border-radius:50%;background:var(--dot,transparent)}
+.lens.red.big{--dot:var(--red)}
+.lens.green.big{--dot:var(--green)}
+@media (prefers-reduced-motion:no-preference){
+  .lens.big{animation:breathe 3.4s ease-in-out infinite}
+  @keyframes breathe{0%,100%{filter:brightness(1)}50%{filter:brightness(1.09)}}
+}
+.minor{display:flex;gap:8px;margin:10px 0 2px}
+.ghost{flex:1;appearance:none;background:transparent;border:1px solid var(--line);border-radius:14px;
+  color:var(--muted);font-family:var(--font-num);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  padding:12px 8px;cursor:pointer}
+.ghost:active{background:var(--asphalt-2)}
+.ghost:disabled{opacity:.32;cursor:default}
+.ghost.warn{color:var(--paint);border-color:rgba(242,194,48,.4)}
+
+/* ---- captured events: a lane-marking rail ---- */
+.rail{margin:20px 0 4px;padding-left:18px;position:relative;min-height:8px}
+.rail::before{content:"";position:absolute;left:4px;top:6px;bottom:6px;width:2px;
+  background:repeating-linear-gradient(var(--line) 0 8px,transparent 8px 16px)}
+.mark{display:flex;align-items:baseline;gap:12px;padding:7px 0;font-family:var(--font-num);font-size:13px;
+  border-bottom:1px solid rgba(232,229,222,.06)}
+.mark:last-child{border-bottom:0}
+.mark .t{font-variant-numeric:tabular-nums;width:62px;color:var(--paint);text-align:right}
+.mark .n{letter-spacing:.12em;text-transform:uppercase;font-size:11px;color:var(--muted)}
+.mark.dim .t{color:var(--muted);opacity:.6}
+
+/* ---- form ---- */
+.section{margin:26px 0 0;border-top:1px solid var(--line);padding-top:16px}
+.section h2{margin:0 0 14px;font-family:var(--font-num);font-size:11px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--muted);font-weight:400}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.full{grid-column:1 / -1}
+label{font-family:var(--font-num);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+select,input[type=text]{
+  appearance:none;width:100%;background:var(--asphalt-2);color:var(--concrete);
+  border:1px solid var(--line);border-radius:12px;padding:13px 12px;font-size:16px;font-family:var(--font-ui);
+}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:34px}
+select:focus-visible,input:focus-visible,.lens:focus-visible,.ghost:focus-visible,button:focus-visible{
+  outline:2px solid var(--paint);outline-offset:2px}
+.field.missing select{border-color:var(--red)}
+
+/* ---- save bar ---- */
+.savebar{position:fixed;left:0;right:0;bottom:0;z-index:2;background:rgba(22,24,26,.94);
+  backdrop-filter:blur(12px);border-top:1px solid var(--line);
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+.savebar-in{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.save{flex:1;appearance:none;border:0;border-radius:16px;background:var(--paint);color:#1A1500;
+  font-family:var(--font-ui);font-weight:800;font-size:17px;padding:16px;cursor:pointer;letter-spacing:-.01em}
+.save:disabled{background:var(--asphalt-3);color:var(--muted);cursor:default}
+.save:active:not(:disabled){filter:brightness(.92)}
+.queue{font-family:var(--font-num);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);text-align:right;line-height:1.5;min-width:74px}
+.queue b{color:var(--paint);font-weight:400}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));
+  z-index:3;background:var(--asphalt-3);border:1px solid var(--line);border-radius:999px;
+  padding:11px 18px;font-family:var(--font-num);font-size:12px;letter-spacing:.06em;
+  opacity:0;pointer-events:none;transition:opacity .22s ease;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+.toast.err{border-color:var(--red);color:#FFC9C5}
+.toast.ok{border-color:var(--green)}
+.note{font-family:var(--font-num);font-size:11px;line-height:1.7;color:var(--muted);
+  letter-spacing:.03em;margin:22px 0 8px;padding-left:10px;border-left:2px solid var(--line)}
+.toggles{display:flex;gap:8px;margin-top:14px}
+.toggle{flex:1;appearance:none;background:transparent;border:1px solid var(--line);border-radius:12px;
+  color:var(--muted);font-family:var(--font-num);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  padding:10px 6px;cursor:pointer}
+.toggle[aria-pressed=true]{color:var(--paint);border-color:rgba(242,194,48,.45);background:rgba(242,194,48,.08)}
+</style>
+</head>
+<body>
+<div id="wash"></div>
+
+<header class="topbar">
+  <div class="brand">do<b>they</b>move</div>
+  <a class="navlink" href="/view">Data →</a>
+</header>
+
+<main class="wrap">
+
+  <section class="clock">
+    <div class="clock-row">
+      <span class="eyebrow" id="trialLabel">Trial 1</span>
+      <span class="eyebrow" id="stateLabel">Ready</span>
+    </div>
+    <div class="time idle" id="time">0.00<small>s</small></div>
+    <div class="latency hide" id="latency"></div>
+  </section>
+
+  <div class="pad" id="pad"></div>
+
+  <div class="minor">
+    <button class="ghost warn" id="btnNever" disabled>They never moved</button>
+    <button class="ghost" id="btnUndo" disabled>Undo tap</button>
+    <button class="ghost" id="btnReset">Reset</button>
+  </div>
+
+  <div class="rail" id="rail"></div>
+
+  <section class="section">
+    <h2>Driver &amp; vehicle</h2>
+    <div class="grid">
+      <div class="field full">
+        <label for="trialType">Trial type</label>
+        <select id="trialType">
+          <option>Real move</option>
+          <option>Mock move (control)</option>
+          <option>No move (control)</option>
+        </select>
+      </div>
+      <div class="field"><label for="ageRange">Age range</label>
+        <select id="ageRange"><option value="">—</option></select></div>
+      <div class="field"><label for="gender">Gender</label>
+        <select id="gender"><option value="">—</option></select></div>
+      <div class="field"><label for="make">Make</label>
+        <select id="make"><option value="">—</option></select></div>
+      <div class="field"><label for="sizeClass">Size class</label>
+        <select id="sizeClass"><option value="">—</option></select></div>
+      <div class="field full"><label for="color">Color</label>
+        <select id="color"><option value="">—</option></select></div>
+      <div class="field"><label for="iMoved">I moved</label>
+        <select id="iMoved"><option>No</option><option>Yes</option></select></div>
+      <div class="field"><label for="theyMoved">They moved</label>
+        <select id="theyMoved"><option>No</option><option>Yes</option></select></div>
+      <div class="field full"><label for="notes">Notes (optional)</label>
+        <input type="text" id="notes" placeholder="Intersection, weather, anything odd" autocomplete="off"></div>
+    </div>
+
+    <div class="toggles">
+      <button class="toggle" id="tSound" aria-pressed="true">Beep on tap</button>
+      <button class="toggle" id="tBuzz" aria-pressed="true">Vibrate on tap</button>
+    </div>
+
+    <p class="note">
+      Each tap beeps low for a stop and high for a go, so you never have to look down.
+      Fill the dropdowns after the trial, once you're parked or stopped again.
+    </p>
+  </section>
+</main>
+
+<div class="savebar">
+  <div class="savebar-in">
+    <button class="save" id="btnSave" disabled>Save trial</button>
+    <div class="queue" id="queue">Synced</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =================================================================
+   CONFIG — paste your Apps Script Web App URL and shared key here.
+   The same two values must go in view.html.
+   ================================================================= */
+const CONFIG = {
+  ENDPOINT: "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE",  // ends in /exec
+  KEY: "change-me-please"                                // must match Code.gs
+};
+
+/* ---------- option lists ---------- */
+const OPTIONS = {
+  ageRange: ["16–25","26–35","36–50","51–65","65+","Unsure"],
+  gender:   ["Male","Female","Unclear"],
+  make: ["Toyota","Honda","Ford","Chevrolet","Nissan","Jeep","Hyundai","Kia","Subaru","GMC","Ram","Dodge",
+         "Mazda","Volkswagen","BMW","Mercedes-Benz","Lexus","Tesla","Buick","Cadillac","Chrysler","Acura",
+         "Infiniti","Volvo","Audi","Mitsubishi","Lincoln","Porsche","Land Rover","Genesis","Mini","Rivian",
+         "Other","Unknown"],
+  sizeClass: ["Subcompact car","Compact car","Midsize car","Full-size car","Sports car",
+              "Compact SUV / crossover","Midsize SUV","Full-size SUV","Pickup truck","Minivan / van",
+              "Commercial / box truck","Other","Unknown"],
+  color: ["White","Black","Gray","Silver","Blue","Red","Brown / beige","Green","Gold","Orange","Yellow",
+          "Purple","Other","Unknown"]
+};
+for (const [id, list] of Object.entries(OPTIONS)) {
+  const sel = document.getElementById(id);
+  for (const v of list) { const o = document.createElement("option"); o.value = o.textContent = v; sel.appendChild(o); }
+}
+
+/* ---------- storage that never throws ---------- */
+const store = (() => {
+  let live = false, mem = {};
+  try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); live = true; } catch(e){}
+  return {
+    get:(k)=>{ try { return live ? localStorage.getItem(k) : (mem[k] ?? null); } catch(e){ return mem[k] ?? null; } },
+    set:(k,v)=>{ try { live ? localStorage.setItem(k,v) : (mem[k]=v); } catch(e){ mem[k]=v; } }
+  };
+})();
+
+/* ---------- trial state ---------- */
+const $ = (id) => document.getElementById(id);
+let t = {}, order = [], t0Perf = null, t0Wall = null, neverMoved = false, raf = null;
+let trialNo = Number(store.get("dtm_trial_no") || 1);
+let sound = store.get("dtm_sound") !== "0";
+let buzz  = store.get("dtm_buzz")  !== "0";
+$("trialType").value = store.get("dtm_trial_type") || "Real move";
+
+const EVENT_NAMES = {
+  they_stopped:"They stopped behind me", i_moved:"I moved", i_stopped:"I stopped",
+  they_moved:"They moved", they_stopped_2:"They stopped again"
+};
+
+/* ---------- eyes-free feedback ---------- */
+let actx = null;
+function beep(tone){
+  if (!sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.frequency.value = tone === "green" ? 990 : 420;
+    o.type = "sine"; o.connect(g); g.connect(actx.destination);
+    const n = actx.currentTime;
+    g.gain.setValueAtTime(0, n);
+    g.gain.linearRampToValueAtTime(.18, n + .012);
+    g.gain.exponentialRampToValueAtTime(.0001, n + .13);
+    o.start(n); o.stop(n + .15);
+  } catch(e){}
+}
+function vibrate(){ if (buzz && navigator.vibrate) { try { navigator.vibrate(22); } catch(e){} } }
+
+let wakeLock = null;
+async function keepAwake(){
+  try { if ("wakeLock" in navigator && !wakeLock) wakeLock = await navigator.wakeLock.request("screen"); } catch(e){}
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && t0Perf !== null) { wakeLock = null; keepAwake(); }
+});
+
+/* ---------- which buttons are live right now ---------- */
+function actions(){
+  const type = $("trialType").value;
+  if (t.they_stopped == null) return [{k:"they_stopped", label:"Car stopped behind me", tone:"red"}];
+  if (t.i_moved == null) {
+    const label = type === "Mock move (control)" ? "I mock-moved" : "I moved";
+    return [{k:"i_moved", label, tone:"green"}];
+  }
+  const a = [];
+  if (t.i_stopped == null) a.push({k:"i_stopped", label:"I stopped", tone:"red"});
+  if (t.they_moved == null && !neverMoved) a.push({k:"they_moved", label:"They moved", tone:"green"});
+  if (t.they_moved != null && t.they_stopped_2 == null) a.push({k:"they_stopped_2", label:"They stopped", tone:"red"});
+  return a;
+}
+const isComplete = () => t.i_stopped != null && (t.they_stopped_2 != null || neverMoved);
+
+/* ---------- recording ---------- */
+function tap(key, tone){
+  if (t0Perf === null){ t0Perf = performance.now(); t0Wall = new Date(); keepAwake(); tick(); }
+  t[key] = Math.round(performance.now() - t0Perf);
+  order.push(key);
+  if (key === "i_moved") $("iMoved").value = $("trialType").value === "No move (control)" ? "No" : "Yes";
+  if (key === "they_moved") $("theyMoved").value = "Yes";
+  beep(tone); vibrate(); render();
+}
+function undo(){
+  const k = order.pop(); if (!k) return;
+  delete t[k];
+  if (k === "they_stopped"){ t0Perf = null; t0Wall = null; cancelAnimationFrame(raf); }
+  if (k === "i_moved") $("iMoved").value = "No";
+  if (k === "they_moved") $("theyMoved").value = "No";
+  neverMoved = false; render();
+}
+function reset(keepForm){
+  t = {}; order = []; t0Perf = null; t0Wall = null; neverMoved = false;
+  cancelAnimationFrame(raf);
+  if (!keepForm){
+    for (const id of ["ageRange","gender","make","sizeClass","color"]) $(id).value = "";
+    $("notes").value = "";
+  }
+  $("iMoved").value = "No"; $("theyMoved").value = "No";
+  render();
+}
+
+/* ---------- rendering ---------- */
+function fmt(ms){ return (ms/1000).toFixed(2); }
+function tick(){
+  if (t0Perf === null) return;
+  $("time").innerHTML = fmt(performance.now() - t0Perf) + "<small>s</small>";
+  raf = requestAnimationFrame(tick);
+}
+function render(){
+  const acts = actions(), done = isComplete();
+  $("trialLabel").textContent = "Trial " + trialNo;
+  $("time").classList.toggle("idle", t0Perf === null);
+  if (t0Perf === null) $("time").innerHTML = "0.00<small>s</small>";
+
+  $("stateLabel").textContent = done ? "Complete — save it"
+    : t0Perf === null ? "Ready" : "Recording";
+
+  const pad = $("pad"); pad.innerHTML = ""; pad.className = "pad" + (acts.length === 2 ? " two" : "");
+  for (const a of acts){
+    const b = document.createElement("button");
+    b.className = "lens " + a.tone + (acts.length === 1 ? " big" : "");
+    b.innerHTML = "<span>" + a.label + "</span>";
+    b.onclick = () => tap(a.k, a.tone);
+    pad.appendChild(b);
+  }
+  if (!acts.length){
+    const d = document.createElement("div");
+    d.className = "lens"; d.style.minHeight = "104px"; d.style.color = "var(--muted)";
+    d.innerHTML = "<span>All five marks captured</span>";
+    pad.appendChild(d);
+  }
+
+  // ambient wash follows the next action, readable in peripheral vision
+  const tone = acts.length ? acts[0].tone : null;
+  $("wash").style.background = !tone ? "transparent" :
+    "radial-gradient(90% 50% at 50% 0%," + (tone === "green" ? "rgba(47,191,113,.10)" : "rgba(226,69,60,.10)") + " 0%,transparent 70%)";
+
+  $("btnNever").disabled = !(t.i_moved != null && t.they_moved == null && !neverMoved);
+  $("btnUndo").disabled  = order.length === 0;
+  $("btnSave").disabled  = t.they_stopped == null;
+
+  // captured marks
+  const rail = $("rail"); rail.innerHTML = "";
+  for (const k of ["they_stopped","i_moved","i_stopped","they_moved","they_stopped_2"]){
+    const row = document.createElement("div");
+    const has = t[k] != null;
+    const skipped = (k === "they_moved" || k === "they_stopped_2") && neverMoved && !has;
+    if (!has && !skipped) continue;
+    row.className = "mark" + (skipped ? " dim" : "");
+    row.innerHTML = '<span class="t">' + (skipped ? "—" : fmt(t[k])) + '</span><span class="n">' +
+      (skipped ? "never moved" : EVENT_NAMES[k]) + "</span>";
+    rail.appendChild(row);
+  }
+
+  // the number this whole experiment is about
+  const lat = (t.i_moved != null && t.they_moved != null) ? t.they_moved - t.i_moved : null;
+  const L = $("latency");
+  if (lat === null) L.classList.add("hide");
+  else { L.classList.remove("hide"); L.textContent = "Response +" + fmt(lat) + "s after I moved"; }
+}
+
+/* ---------- queue + sync ---------- */
+const QKEY = "dtm_queue_v1";
+const loadQ = () => { try { return JSON.parse(store.get(QKEY) || "[]"); } catch(e){ return []; } };
+const saveQ = (q) => store.set(QKEY, JSON.stringify(q));
+let flushing = false;
+
+function updateQueue(){
+  const n = loadQ().length;
+  $("queue").innerHTML = n === 0 ? "Synced" : "<b>" + n + "</b> waiting<br>to sync";
+}
+async function flush(){
+  const q = loadQ();
+  if (flushing || !q.length) { updateQueue(); return; }
+  if (!CONFIG.ENDPOINT || CONFIG.ENDPOINT.startsWith("PASTE")) { toast("Add your Apps Script URL to index.html", "err"); return; }
+  flushing = true;
+  const batch = q.slice(0, 25);
+  try {
+    const res = await fetch(CONFIG.ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // text/plain avoids the CORS preflight Apps Script can't answer
+      body: JSON.stringify({ key: CONFIG.KEY, trials: batch }),
+      redirect: "follow"
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Sheet rejected the write");
+    const ids = new Set(batch.map(x => x.id));
+    saveQ(loadQ().filter(x => !ids.has(x.id)));
+    toast("Saved to the sheet", "ok");
+  } catch(e){
+    toast("Saved on this phone — will sync when back online", "err");
+  } finally { flushing = false; updateQueue(); }
+}
+
+let toastTimer = null;
+function toast(msg, kind){
+  const el = $("toast");
+  el.textContent = msg; el.className = "toast show " + (kind || "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = "toast " + (kind || ""), 2600);
+}
+
+/* ---------- save ---------- */
+function save(){
+  const required = ["ageRange","gender","make","sizeClass","color"];
+  let missing = null;
+  for (const id of required){
+    const f = $(id).closest(".field");
+    const empty = !$(id).value;
+    f.classList.toggle("missing", empty);
+    if (empty && !missing) missing = id;
+  }
+  if (missing){ $(missing).focus(); toast("Pick every dropdown — “Unknown” counts", "err"); return; }
+
+  const lat = (t.i_moved != null && t.they_moved != null) ? t.they_moved - t.i_moved : "";
+  const trial = {
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+    started_at: (t0Wall || new Date()).toISOString(),
+    trial_type: $("trialType").value,
+    age_range: $("ageRange").value,
+    gender: $("gender").value,
+    make: $("make").value,
+    size_class: $("sizeClass").value,
+    color: $("color").value,
+    i_moved: $("iMoved").value,
+    they_moved: neverMoved ? "No" : $("theyMoved").value,
+    t_they_stopped_ms: t.they_stopped ?? "",
+    t_i_moved_ms: t.i_moved ?? "",
+    t_i_stopped_ms: t.i_stopped ?? "",
+    t_they_moved_ms: t.they_moved ?? "",
+    t_they_stopped2_ms: t.they_stopped_2 ?? "",
+    latency_ms: lat,
+    my_move_ms: (t.i_moved != null && t.i_stopped != null) ? t.i_stopped - t.i_moved : "",
+    their_move_ms: (t.they_moved != null && t.they_stopped_2 != null) ? t.they_stopped_2 - t.they_moved : "",
+    notes: $("notes").value.trim(),
+    source: "web"
+  };
+  const q = loadQ(); q.push(trial); saveQ(q);
+  trialNo++; store.set("dtm_trial_no", String(trialNo));
+  store.set("dtm_trial_type", $("trialType").value);
+  reset(true);
+  updateQueue();
+  flush();
+}
+
+/* ---------- wiring ---------- */
+$("btnSave").onclick = save;
+$("btnUndo").onclick = undo;
+$("btnReset").onclick = () => { if (order.length && !confirm("Discard this trial?")) return; reset(false); };
+$("btnNever").onclick = () => { neverMoved = true; $("theyMoved").value = "No"; beep("red"); vibrate(); render(); };
+$("trialType").onchange = () => { store.set("dtm_trial_type", $("trialType").value); render(); };
+$("tSound").onclick = (e) => { sound = !sound; store.set("dtm_sound", sound ? "1" : "0"); e.currentTarget.setAttribute("aria-pressed", sound); if (sound) beep("green"); };
+$("tBuzz").onclick  = (e) => { buzz  = !buzz;  store.set("dtm_buzz",  buzz  ? "1" : "0"); e.currentTarget.setAttribute("aria-pressed", buzz);  if (buzz) vibrate(); };
+$("tSound").setAttribute("aria-pressed", sound);
+$("tBuzz").setAttribute("aria-pressed", buzz);
+
+// spacebar works as the tap target on a laptop
+document.addEventListener("keydown", (e) => {
+  if (e.code !== "Space" || e.target.matches("select,input,button")) return;
+  e.preventDefault();
+  const a = actions()[0]; if (a) tap(a.k, a.tone);
+});
+
+window.addEventListener("online", flush);
+setInterval(() => { if (loadQ().length) flush(); }, 30000);
+
+render(); updateQueue(); flush();
+</script>
+</body>
+</html>
